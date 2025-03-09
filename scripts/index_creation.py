@@ -27,6 +27,12 @@ df = df.sort_values(by="date")
 # preprocess the date to get datetime format
 df["datetime"] = pd.to_datetime(df["date"], format="%Y%m%d%H%M", errors="raise")
 
+# now we want to keep on date that have a frequency of 1 hour or 30 minutes
+df = df[df["datetime"].dt.minute.isin([0, 30])]
+
+# print the number of rows
+print(f"Number of rows: {len(df)}")
+
 # now we want to save the dataframe into a parquet file
 df.to_parquet("../data/index.parquet", index=False)
 
