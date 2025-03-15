@@ -162,7 +162,7 @@ df.write_parquet("../data/groundstations_filter/total.parquet", use_pyarrow=True
 
 
 df = df.with_columns(
-    pl.col("AAAAMMJJHH").str.strptime(pl.Date, format="%Y%m%d%H%M").alias("datetime")
+    pl.col("AAAAMMJJHH").str.strptime(pl.Datetime, format="%Y%m%d%H%M").alias("datetime")
 )
 
 EPSG = "32630"
@@ -197,7 +197,7 @@ df = df.with_columns(
     ),
 )
 
-print(df.select(["position_x", "position_y", "LAT", "LON"]).head())
+print(df.select(["position_x", "position_y", "LAT", "LON", "datetime", "AAAAMMJJHH"]).head())
 
 # filter element not in [0, 3472]
 df = df.filter(
