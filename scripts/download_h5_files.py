@@ -32,7 +32,7 @@ def download_file(bucket_name, source_blob_name, destination_file_name):
 
 
 def main():
-    csv_file = "../list_files.csv"
+    csv_file = "list_files.parquet"
     output_dir = "../data/h5"  # Directory to save the downloaded files
 
     # Create the output directory if it doesn't exist
@@ -40,21 +40,21 @@ def main():
         os.makedirs(output_dir)
 
     try:
-        df = pd.read_csv(csv_file, header=None, names=["file_path"])
+        df = pd.read_parquet(csv_file)
 
         # filter the csv to keep only the h5 files
-        df = df[df["file_path"].str.endswith(".h5")]
+        df = df[df["name"].str.endswith(".h5")]
 
-        # Assuming the CSV has columns named 'bucket_name' and 'file_path'
+        # Assuming the CSV has columns named 'bucket_name' and 'name'
         for index, row in tqdm(
             df.iterrows(), total=len(df), desc="Downloading files", unit="file"
         ):
             bucket_name = "meteofrancedata"
-            file_path = row["file_path"]
-            if file_path.endswith(".h5"):
-                filename = os.path.basename(file_path)
+            name = row["name"]
+            if name.endswith(".h5"):
+                filename = os.path.basename(name)
                 output_path = os.path.join(output_dir, filename)
-                download_file(bucket_name, file_path, output_path)
+                download_file(bucket_name, name, output_path)
 
     except FileNotFoundError:
         print(f"Error: CSV file not found at {csv_file}")

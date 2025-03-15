@@ -2,6 +2,7 @@ import os
 from google.cloud import storage
 import google.auth
 
+import pandas as pd
 
 bucket_name = "meteofrancedata"
 
@@ -36,7 +37,22 @@ else:
 # count the number of element in the bucket
 print(len(list_name))
 
-# put the list into a csv file
-with open('list_files.csv', 'w') as f:
-    for name in list_name:
-        f.write(name + '\n')
+# create a dataframe
+df = pd.DataFrame(list_name, columns=['name'])
+
+# the file name look like T_IMFR27_C_LFPW_20250103224500.bufr.gz
+# we want to extract the date from the filename
+df["date"] = df["name"].str.extract(r"(\d{12})")
+
+# convert the date to datetime
+df["date"] = pd.to_datetime(df["date"], format="%Y%m%d%H%M")
+# sort the dataframe by date
+df = df.sort_values(by="date")
+
+# keep only the value that have a frequency of 1 hour or 30 minutes
+df = df[df["date"].dt.minute.isin([0, 30])]
+
+print("number of files : ", len(df))
+
+# save the dataframe
+df.to_parquet('list_files.parquet', index=False)
