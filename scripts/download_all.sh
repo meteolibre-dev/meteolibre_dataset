@@ -8,11 +8,15 @@ python3 get_bucket_list_files.py
 # download all the files (only h5 files)
 python3 download_h5_files.py
 
-# index creation (for h5 files) (only radar/info files)
-python3 index_creation.py
 
 # download ground station data
 python3 download_groundstation.py
 
 # preprocess ground station data
-python3 preprocess_groundstattions.py
+python3 preprocess_groundstations.py
+
+# creation of npz files (only radar/info files)
+python3 groundstation_npz_writing.py
+
+# index creation (for h5 files) (only radar/info files)
+python3 index_creation.py
