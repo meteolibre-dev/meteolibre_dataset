@@ -5,12 +5,15 @@ We will use the current full dataset (the original one) to create a proper 256x2
 This will be then a HF dataset used for training the model (in streaming format possibly)
 """
 import os
+
 import numpy as np
+import pandas as pd
+
 from datasets import Dataset, Features, Value, Array2D, Array3D, ArrayXD # Choose ArrayXD for flexibility
 
 
 # --- 0. Prerequisite: load the index parquet dataframe OR CREATE IT ---
-index_data = pl.read_parquet(
+index_data = pd.read_parquet(
     "../data/hf_dataset/index.parquet"
 ) # Load the index data from parquet
 
