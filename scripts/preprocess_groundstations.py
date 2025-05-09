@@ -17,9 +17,6 @@ list_parquet = [file for file in os.listdir(dir_) if file.endswith(".parquet")]
 
 # print(data.head())
 # exit()
-
-
-
 # 2. Define columns and data types upfront for schema definition
 columns_taken = [
     "NUM_POSTE",

@@ -36,10 +36,10 @@ data_to_download = ressources_meteofrance.loc[idx]
 data_to_download[["description", "url"]].head().values
 
 # loop over data_to_download and download the data from dataset.url col
-# for url in data_to_download["url"]:
-#     # apply the command :
-#     # !wget {url} -O ../data/groundstations/{url.split("/")[-1]}
-#     os.system(f"wget {url} -O ../data/groundstations/{url.split('/')[-1]}")
+for url in data_to_download["url"]:
+    # apply the command :
+    # !wget {url} -O ../data/groundstations/{url.split("/")[-1]}
+    os.system(f"wget {url} -O ../data/groundstations/{url.split('/')[-1]}")
 
 
 ## now for each files in data/groundstations we unzip the .gz files read it, create a parquet file
@@ -66,7 +66,12 @@ for file in list_files:
         df.to_parquet(f"../data/groundstations_parquet/{file.split('.')[0]}.parquet")
 
         # delete the .gz file
-        # os.remove(f"../data/groundstations/{file}")
+        os.remove(f"../data/groundstations/{file}")
+        
+        # remove the csv file
+        file_csv = file.split(".")[0] + ".csv"
+        os.remove(f"../data/groundstations/{file_csv}")
+        
     except Exception as e:
         print(e)
 

@@ -8,7 +8,6 @@ python3 get_bucket_list_files.py
 # download all the files (only h5 files)
 python3 download_h5_files.py
 
-
 # download ground station data
 python3 download_groundstation.py
 

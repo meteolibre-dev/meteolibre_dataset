@@ -123,7 +123,6 @@ def process_h5_files_and_create_npz(
         return mask, image_result
 
     ####### Third write npz files for every time stamp ########
-
     for i in tqdm(range(len(df_files))):
         print(f"Processing H5 file {i+1}/{len(df_files)}")
         datetime = df_files[i, "datetime"]
