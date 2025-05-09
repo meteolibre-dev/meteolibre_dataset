@@ -1,5 +1,9 @@
 ### data science image
-FROM jupyter/scipy-notebook:python-3.7
+FROM ubuntu:20.04
+
+COPY . /root/
 
 ### install some packages
-RUN pip install pandas matplotlib seaborn
+RUN apt-get update && apt-get install -y python3 python3-pip
+RUN pip install -r requirements.txt
+
