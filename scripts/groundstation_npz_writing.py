@@ -83,6 +83,23 @@ def process_h5_files_and_create_npz(
     groundstations_info_df = pl.read_parquet(
         groundstations_info_path, columns=columns_measurements + columns_positions + ["datetime"]
     )
+    
+    # normalize the columns_measurements values
+    means_col = groundstations_info_df[columns_measurements].mean()
+    std_col = groundstations_info_df[columns_measurements].std()
+    
+    for col in columns_measurements:
+        groundstations_info_df = groundstations_info_df.with_columns(
+            ((pl.col(col) - means_col[col]) / std_col[col]).alias(col)
+        )
+    
+    # save the mean and std in a file
+    means_col.to_parquet(
+        os.path.join("./", "means.parquet"), use_pyarrow=True
+    )
+    std_col.to_parquet(
+        os.path.join("./", "std.parquet"), use_pyarrow=True
+    )
 
     print("\nFirst few rows of ground station info:")
     print(groundstations_info_df.head())

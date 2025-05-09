@@ -9,6 +9,7 @@ and is big in term of images (3472x3472xnb_channels).
 The idea is to create a smaller dataset (256x256) with the same number of channels
 
 """
+
 import os
 import random
 import datetime
@@ -18,6 +19,24 @@ import numpy as np
 import pandas as pd
 
 
+def max_pool_2x2(frames):
+    """
+    Downsamples frames by a factor of 2 using max pooling.
+    Assumes input frames have shape (H, W, T).
+    """
+    H, W, T = frames.shape
+    # Ensure dimensions are even for simple 2x2 pooling
+    if H % 2 != 0 or W % 2 != 0:
+        raise ValueError(
+            f"Frame dimensions ({H}, {W}) must be even for 2x2 max pooling."
+        )
+
+    # Reshape to group into 2x2 blocks: (H/2, 2, W/2, 2, T)
+    # Then take the maximum over the 2x2 block dimensions (axes 1 and 3)
+    pooled_frames = frames.reshape(H // 2, 2, W // 2, 2, T).max(axis=(1, 3))
+    return pooled_frames
+
+
 def generate_data_point(
     index_dataframe,
     i,
@@ -25,7 +44,6 @@ def generate_data_point(
     nb_future_steps,
     shape_image,
     ground_height_image,
-    save_hf_dataset
 ):
     """
     Generate a data point for the HF dataset.
@@ -53,6 +71,14 @@ def generate_data_point(
     x = random.randint(0, shape_image // 2 - shape_extrated_image)
     y = random.randint(0, shape_image // 2 - shape_extrated_image)
 
+    array_future_list = []
+    array_back_list = []
+
+    array_back_groundstation_list = []
+    array_future_groundstation_list = []
+
+    array_back_list_time = []
+
     for future in range(nb_future_steps):
         path_file = os.path.join(
             MAIN_DIR, str(index_dataframe["radar_file_path"].iloc[index + future])
@@ -61,7 +87,8 @@ def generate_data_point(
         # take
         array = np.array(
             h5py.File(path_file, "r")["dataset1"]["data1"]["data"][
-                x : (x + shape_extrated_image*2) : 2, y : (y + shape_extrated_image*2) : 2
+                x : (x + shape_extrated_image * 2) : 2,
+                y : (y + shape_extrated_image * 2) : 2,
             ]
         )
 
@@ -76,18 +103,37 @@ def generate_data_point(
 
         array = np.float32(array) / RADAR_NORMALIZATION  # normalization
 
-        dict_return["future_" + str(future)] = array
-        dict_return["mask_future_" + str(future)] = array != (
-            -DEFAULT_VALUE / RADAR_NORMALIZATION
-        )
+        array_future_list.append(array)
 
-    for back in range(nb_back_steps):
+        # dict_return["radar_mask_future_" + str(future)] = array != (
+        #     -DEFAULT_VALUE / RADAR_NORMALIZATION
+        # )
+
+        array_ground_station = np.load(
+            os.path.join(
+                MAIN_DIR,
+                str(index_dataframe["groundstation_file_path"].iloc[index + future]),
+            )
+        )["image"]
+
+        # maxpool
+        array_ground_station = max_pool_2x2(array_ground_station)
+
+        array_ground_station = array_ground_station[
+            x : (x + shape_extrated_image),
+            y : (y + shape_extrated_image),
+        ]
+
+        array_future_groundstation_list.append(array_ground_station)
+
+    for back in range(-nb_back_steps, 0):
         path_file = os.path.join(
             MAIN_DIR,
-            str(index_dataframe["radar_file_path"].iloc[index - back - 1]),
+            str(index_dataframe["radar_file_path"].iloc[index + back]),
         )
+
         # check if the delta with the current time is not too high
-        time_back = index_dataframe.index[index - back - 1]
+        time_back = index_dataframe.index[index + back]
         delta_time = current_date - time_back
 
         # convert delta time in minutes
@@ -96,7 +142,8 @@ def generate_data_point(
         if delta_time <= datetime.timedelta(hours=2):
             array = np.array(
                 h5py.File(path_file, "r")["dataset1"]["data1"]["data"][
-                    x : (x + shape_extrated_image*2) : 2, y : (y + shape_extrated_image*2) : 2
+                    x : (x + shape_extrated_image * 2) : 2,
+                    y : (y + shape_extrated_image * 2) : 2,
                 ]
             )
             array = array.astype(np.int32)
@@ -104,24 +151,109 @@ def generate_data_point(
 
         else:
             # print("bad delta time", delta_time)
-            array = np.ones((shape_extrated_image, shape_extrated_image), dtype=np.float32) * -DEFAULT_VALUE
+            array = (
+                np.ones((shape_extrated_image, shape_extrated_image), dtype=np.float32)
+                * -DEFAULT_VALUE
+            )
 
         array = np.float32(array) / RADAR_NORMALIZATION  # normalization
 
-        dict_return["back_" + str(back)] = array
-        # dict_return["mask_back_" + str(back)] = array != (-DEFAULT_VALUE / RADAR_NORMALIZATION)
-        dict_return["time_back_" + str(back)] = delta_time_minutes / 60.0
+        # dict_return["radar_back_" + str(back)] = array
+        array_back_list.append(array)
+        array_back_list_time.append(delta_time_minutes / 60.0)
+
+        ## groundstation setup
+        array_ground_station = np.load(
+            os.path.join(
+                MAIN_DIR,
+                str(index_dataframe["groundstation_file_path"].iloc[index + back]),
+            )
+        )["image"]
+
+        array_ground_station = max_pool_2x2(array_ground_station)
+
+        array_ground_station = array_ground_station[
+            x : (x + shape_extrated_image),
+            y : (y + shape_extrated_image),
+        ]
+        array_back_groundstation_list.append(array_ground_station)
 
     dict_return["hour"] = np.int32(current_date.hour) / 24.0
     dict_return["minute"] = np.int32(current_date.minute) / 30.0
 
     # dd ground height image
     dict_return["ground_height_image"] = ground_height_image[
-        x : (x + shape_extrated_image*2) : 2, y : (y + shape_extrated_image*2) : 2
+        x : (x + shape_extrated_image * 2) : 2, y : (y + shape_extrated_image * 2) : 2
     ]
-    
+
+    dict_return["radar_future"] = np.concatenate(array_future_list, axis=0)
+    dict_return["radar_back"] = np.concatenate(array_back_list, axis=0)
+
+    dict_return["radar_back_time"] = np.array(array_back_list_time, dtype=np.float32)
+
+    dict_return["groundstation_future"] = np.stack(
+        array_future_groundstation_list, axis=0
+    )
+    dict_return["groundstation_back"] = np.stack(array_back_groundstation_list, axis=0)
+
     # save the image and save an index
     return dict_return
+
+
+def save_image(dict_return, save_hf_dataset, new_index):
+    """
+    Save the image and update the index.
+
+    Args:
+        dict_return (dict): The dictionary containing the data point.
+        save_hf_dataset (str): Path to save the HF dataset.
+        new_index (list): The list to update with the new index.
+
+    Returns:
+        None
+    """
+    random_id = str(random.randint(0, 1000000000))  # generate a random id for the image
+
+    def get_file_name(key):
+        return os.path.join(
+            save_hf_dataset,
+            "radar",
+            str(key)
+            + "_"
+            + str(dict_return["hour"])
+            + f"_"
+            + random_id
+            + ".npz",  # include random_id in the filename
+        )
+
+    for key in dict_return.keys():
+        # if key in radar_future_* or key in radar_back_* we save the value somewhere
+        if (
+            key.startswith("radar_future")
+            or key.startswith("radar_back")
+            or key.startswith("groundstation_future")
+            or key.startswith("groundstation_back")
+            or key.startswith("ground_height_image")
+        ):
+            file_name = get_file_name(key)
+
+            np.savez(file_name, dict_return[key])
+            
+        new_index.append(
+            {
+                "radar_file_path_future": get_file_name("radar_future"),
+                "radar_file_path_back": get_file_name("radar_back"),
+                "groundstation_file_path_future": get_file_name(
+                    "groundstation_future"
+                ),
+                "groundstation_file_path_back": get_file_name("groundstation_back"),
+                "ground_height_file_path": get_file_name("ground_height_image"),
+                "hour": dict_return["hour"],
+                "minute": dict_return["minute"],
+                "radar_back_time": dict_return["radar_back_time"],
+            }
+        )
+
 
 # --- 0. Prerequisite: load main variable ---
 MAIN_DIR = "../data/"
@@ -153,12 +285,15 @@ shape_image = shape_image
 
 # manage ground height image (read the .npy file)
 ground_height_image = np.load(ground_height_image)
-ground_height_image = (
-    ground_height_image - np.mean(ground_height_image)
-) / np.std(ground_height_image)
+ground_height_image = (ground_height_image - np.mean(ground_height_image)) / np.std(
+    ground_height_image
+)
 
 # loop over the index and create the dataset
 len_total = len(index) - nb_back_steps - nb_future_steps
+
+# init the new index
+new_index = []
 
 for i in range(len_total):
     for _ in range(NB_PASS_PER_IMAGES):
@@ -169,8 +304,15 @@ for i in range(len_total):
             nb_future_steps,
             shape_image,
             ground_height_image,
-            save_hf_dataset
         )
-        breakpoint()
-        
+
         # save the image and save an index TODO
+        if dict_result is not None:
+            save_image(dict_result, save_hf_dataset, new_index)
+
+# save the index
+index_df = pd.DataFrame(new_index)
+index_df.to_parquet(
+    os.path.join(save_hf_dataset, "index.parquet"), use_pyarrow=True
+)
+print("index saved")
