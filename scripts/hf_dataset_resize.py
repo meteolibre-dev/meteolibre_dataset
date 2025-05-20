@@ -18,6 +18,12 @@ import h5py
 
 import numpy as np
 import pandas as pd
+import concurrent.futures
+import threading
+import json
+
+# Create a lock for thread-safe file writing
+index_file_lock = threading.Lock()
 
 
 def max_pool_2x2(frames):
@@ -201,14 +207,15 @@ def generate_data_point(
     return dict_return
 
 
-def save_image(dict_return, save_hf_dataset, new_index):
+def save_image(dict_return, save_hf_dataset, data_datetime_str, lock):
     """
     Save the image and update the index.
 
     Args:
         dict_return (dict): The dictionary containing the data point.
         save_hf_dataset (str): Path to save the HF dataset.
-        new_index (list): The list to update with the new index.
+        data_datetime_str (str): The datetime string for the data point.
+        lock (threading.Lock): The lock for thread-safe file writing.
 
     Returns:
         None
@@ -226,10 +233,8 @@ def save_image(dict_return, save_hf_dataset, new_index):
             + random_id
             + ".npz",  # include random_id in the filename
         )
-        
+
     hour = dict_return["hour"].item()
-    
-    print("hour", hour)
 
     for key in dict_return.keys():
         # if key in radar_future_* or key in radar_back_* we save the value somewhere
@@ -240,11 +245,13 @@ def save_image(dict_return, save_hf_dataset, new_index):
             or key.startswith("groundstation_back")
             or key.startswith("ground_height_image")
         ):
-            
+
             file_name = get_file_name(key, random_id, hour)
+            # Ensure directory exists before saving
+            os.makedirs(os.path.dirname(file_name), exist_ok=True)
 
             np.savez(file_name, dict_return[key])
-            
+
     dict_data = {
             "radar_file_path_future": get_file_name("radar_future", random_id, hour),
             "radar_file_path_back": get_file_name("radar_back", random_id, hour),
@@ -256,13 +263,39 @@ def save_image(dict_return, save_hf_dataset, new_index):
             "hour": dict_return["hour"].item(),
             "minute": dict_return["minute"].item(),
             "time_radar_back": dict_return["time_radar_back"].tolist(),
-            "datetime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "datetime": data_datetime_str,
             "id": random_id,
         }
-    
+
     # we want to append the dict_data to a json file
-    with open(os.path.join(save_hf_dataset, "index.json"), "a") as f:
-        f.write(f"{dict_data}\n")
+    # Use the lock for thread-safe writing
+    with lock:
+        with open(os.path.join(save_hf_dataset, "index.json"), "a") as f:
+            json.dump(dict_data, f)
+            f.write('\n')
+
+# New worker function
+def process_index(i, index_dataframe, nb_back_steps, nb_future_steps, shape_image, ground_height_image, save_hf_dataset, lock):
+    """
+    Processes a single index to generate and save a data point.
+    """
+    # Get the datetime for this data point
+    data_datetime = index_dataframe.index[int(i + nb_back_steps)]
+    data_datetime_str = data_datetime.strftime("%Y-%m-%d %H:%M:%S")
+
+    dict_result = generate_data_point(
+        index_dataframe,
+        i,
+        nb_back_steps,
+        nb_future_steps,
+        shape_image,
+        ground_height_image,
+    )
+
+    if dict_result is not None:
+        # Pass the lock and datetime string to save_image
+        save_image(dict_result, save_hf_dataset, data_datetime_str, lock)
+
 
 # --- 0. Prerequisite: load main variable ---
 MAIN_DIR = "../data/"
@@ -301,27 +334,39 @@ ground_height_image = (ground_height_image - np.mean(ground_height_image)) / np.
 # loop over the index and create the dataset
 len_total = len(index) - nb_back_steps - nb_future_steps
 
-# init the new index
-new_index = []
+# Create necessary directories for saving files
+os.makedirs(save_hf_dataset, exist_ok=True)
+# Create subdirectories for different data types
+for data_type in ["radar_future", "radar_back", "groundstation_future", "groundstation_back", "ground_height_image"]:
+    os.makedirs(os.path.join(save_hf_dataset, data_type), exist_ok=True)
 
-for _ in range(NB_PASS_PER_IMAGES):
-    for i in tqdm(range(len_total)):
-        dict_result = generate_data_point(
-            index,
-            i,
-            nb_back_steps,
-            nb_future_steps,
-            shape_image,
-            ground_height_image,
-        )
+# Initialize the index.json file (overwrite if exists)
+with open(os.path.join(save_hf_dataset, "index.json"), "w") as f:
+    pass # Just create an empty file or write a header if needed
 
-        # save the image and save an index TODO
-        if dict_result is not None:
-            save_image(dict_result, save_hf_dataset, new_index)
+# Use ThreadPoolExecutor for parallel processing
+# Determine the number of workers, e.g., number of CPU cores
+num_workers = 8 # Use number of cores, default to 4 if not available
+print(f"Using {num_workers} worker threads.")
 
-# # save the index
-# index_df = pd.DataFrame(new_index)
-# index_df.to_parquet(
-#     os.path.join(save_hf_dataset, "index.parquet"), use_pyarrow=True
-# )
-# print("index saved")
+with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+    futures = []
+    # Use tqdm here to track the submission of tasks
+    for _ in range(NB_PASS_PER_IMAGES):
+        for i in tqdm(range(len_total), desc="Submitting tasks"):
+            # Submit the worker function to the executor
+            future = executor.submit(
+                process_index,
+                i,
+                index, # Pass index_dataframe
+                nb_back_steps,
+                nb_future_steps,
+                shape_image,
+                ground_height_image,
+                save_hf_dataset,
+                index_file_lock # Pass the lock
+            )
+            futures.append(future)
+
+    # The executor context manager waits for all futures to complete automatically.
+print("Dataset generation complete.")
