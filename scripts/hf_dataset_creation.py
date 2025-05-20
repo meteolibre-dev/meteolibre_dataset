@@ -12,10 +12,9 @@ import pandas as pd
 from datasets import Dataset, Features, Value, Array2D, Array3D, ArrayXD # Choose ArrayXD for flexibility
 
 
-# --- 0. Prerequisite: load the index parquet dataframe OR CREATE IT ---
-index_data = pd.read_parquet(
-    "../data/hf_dataset/index.parquet"
-) # Load the index data from parquet
+# --- 0. Prerequisite: load the index json dataframe OR CREATE IT ---
+json_path = "../data/hf_dataset/index.json"
+index_data = pd.read_json(json_path, orient='columns', lines=True)
 
 # --- 1. Define the generator function ---
 # It now takes the index_data as an argument

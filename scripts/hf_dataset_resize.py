@@ -193,8 +193,8 @@ def generate_data_point(
         x : (x + shape_extrated_image * 2) : 2, y : (y + shape_extrated_image * 2) : 2
     ]
 
-    dict_return["radar_future"] = np.concatenate(array_future_list, axis=0)
-    dict_return["radar_back"] = np.concatenate(array_back_list, axis=0)
+    dict_return["radar_future"] = np.stack(array_future_list, axis=0)
+    dict_return["radar_back"] = np.stack(array_back_list, axis=0)
 
     dict_return["time_radar_back"] = np.array(array_back_list_time, dtype=np.float32)
 
@@ -271,6 +271,7 @@ def save_image(dict_return, save_hf_dataset, data_datetime_str, lock):
     # Use the lock for thread-safe writing
     with lock:
         with open(os.path.join(save_hf_dataset, "index.json"), "a") as f:
+            
             json.dump(dict_data, f)
             f.write('\n')
 

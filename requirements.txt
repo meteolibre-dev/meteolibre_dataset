@@ -8,3 +8,4 @@ pyarrow
 polars
 pyproj
 h5py
+imageio
