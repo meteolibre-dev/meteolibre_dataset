@@ -11,6 +11,7 @@ The idea is to create a smaller dataset (256x256) with the same number of channe
 """
 
 import os
+from tqdm import tqdm
 import random
 import datetime
 import h5py
@@ -178,8 +179,8 @@ def generate_data_point(
         ]
         array_back_groundstation_list.append(array_ground_station)
 
-    dict_return["hour"] = np.int32(current_date.hour) / 24.0
-    dict_return["minute"] = np.int32(current_date.minute) / 30.0
+    dict_return["hour"] = np.int32(current_date.hour)
+    dict_return["minute"] = np.int32(current_date.minute)
 
     # dd ground height image
     dict_return["ground_height_image"] = ground_height_image[
@@ -189,7 +190,7 @@ def generate_data_point(
     dict_return["radar_future"] = np.concatenate(array_future_list, axis=0)
     dict_return["radar_back"] = np.concatenate(array_back_list, axis=0)
 
-    dict_return["radar_back_time"] = np.array(array_back_list_time, dtype=np.float32)
+    dict_return["time_radar_back"] = np.array(array_back_list_time, dtype=np.float32)
 
     dict_return["groundstation_future"] = np.stack(
         array_future_groundstation_list, axis=0
@@ -214,17 +215,21 @@ def save_image(dict_return, save_hf_dataset, new_index):
     """
     random_id = str(random.randint(0, 1000000000))  # generate a random id for the image
 
-    def get_file_name(key):
+    def get_file_name(key, random_id, hour):
         return os.path.join(
             save_hf_dataset,
-            "radar",
+            key,
             str(key)
             + "_"
-            + str(dict_return["hour"])
+            + str(hour)
             + f"_"
             + random_id
             + ".npz",  # include random_id in the filename
         )
+        
+    hour = dict_return["hour"].item()
+    
+    print("hour", hour)
 
     for key in dict_return.keys():
         # if key in radar_future_* or key in radar_back_* we save the value somewhere
@@ -235,25 +240,29 @@ def save_image(dict_return, save_hf_dataset, new_index):
             or key.startswith("groundstation_back")
             or key.startswith("ground_height_image")
         ):
-            file_name = get_file_name(key)
+            
+            file_name = get_file_name(key, random_id, hour)
 
             np.savez(file_name, dict_return[key])
             
-        new_index.append(
-            {
-                "radar_file_path_future": get_file_name("radar_future"),
-                "radar_file_path_back": get_file_name("radar_back"),
-                "groundstation_file_path_future": get_file_name(
-                    "groundstation_future"
-                ),
-                "groundstation_file_path_back": get_file_name("groundstation_back"),
-                "ground_height_file_path": get_file_name("ground_height_image"),
-                "hour": dict_return["hour"],
-                "minute": dict_return["minute"],
-                "radar_back_time": dict_return["radar_back_time"],
-            }
-        )
-
+    dict_data = {
+            "radar_file_path_future": get_file_name("radar_future", random_id, hour),
+            "radar_file_path_back": get_file_name("radar_back", random_id, hour),
+            "groundstation_file_path_future": get_file_name(
+                "groundstation_future", random_id, hour
+            ),
+            "groundstation_file_path_back": get_file_name("groundstation_back", random_id, hour),
+            "ground_height_file_path": get_file_name("ground_height_image", random_id, hour),
+            "hour": dict_return["hour"].item(),
+            "minute": dict_return["minute"].item(),
+            "time_radar_back": dict_return["time_radar_back"].tolist(),
+            "datetime": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "id": random_id,
+        }
+    
+    # we want to append the dict_data to a json file
+    with open(os.path.join(save_hf_dataset, "index.json"), "a") as f:
+        f.write(f"{dict_data}\n")
 
 # --- 0. Prerequisite: load main variable ---
 MAIN_DIR = "../data/"
@@ -263,7 +272,7 @@ save_hf_dataset = "../data/hf_dataset/"
 
 NB_BACK_STEPS = 5
 NB_FUTURE_STEPS = 4
-NB_PASS_PER_IMAGES = 20
+NB_PASS_PER_IMAGES = 1
 RADAR_NORMALIZATION = 60.0
 DEFAULT_VALUE = -1
 
@@ -295,8 +304,8 @@ len_total = len(index) - nb_back_steps - nb_future_steps
 # init the new index
 new_index = []
 
-for i in range(len_total):
-    for _ in range(NB_PASS_PER_IMAGES):
+for _ in range(NB_PASS_PER_IMAGES):
+    for i in tqdm(range(len_total)):
         dict_result = generate_data_point(
             index,
             i,
@@ -310,9 +319,9 @@ for i in range(len_total):
         if dict_result is not None:
             save_image(dict_result, save_hf_dataset, new_index)
 
-# save the index
-index_df = pd.DataFrame(new_index)
-index_df.to_parquet(
-    os.path.join(save_hf_dataset, "index.parquet"), use_pyarrow=True
-)
-print("index saved")
+# # save the index
+# index_df = pd.DataFrame(new_index)
+# index_df.to_parquet(
+#     os.path.join(save_hf_dataset, "index.parquet"), use_pyarrow=True
+# )
+# print("index saved")
