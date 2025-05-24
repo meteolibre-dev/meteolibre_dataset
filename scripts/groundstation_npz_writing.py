@@ -94,10 +94,10 @@ def process_h5_files_and_create_npz(
         )
     
     # save the mean and std in a file
-    means_col.to_parquet(
+    means_col.write_parquet(
         os.path.join("./", "means.parquet"), use_pyarrow=True
     )
-    std_col.to_parquet(
+    std_col.write_parquet(
         os.path.join("./", "std.parquet"), use_pyarrow=True
     )
 
