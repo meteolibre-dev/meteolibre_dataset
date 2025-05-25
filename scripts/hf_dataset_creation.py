@@ -100,6 +100,7 @@ features = Features({
 dataset = Dataset.from_generator(
     npz_data_generator,
     features=features,
+    writer_batch_size=500,
     gen_kwargs={"index_records": index_data} # Pass your index here
 )
 
