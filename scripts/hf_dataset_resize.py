@@ -306,7 +306,7 @@ save_hf_dataset = "../data/hf_dataset/"
 
 NB_BACK_STEPS = 5
 NB_FUTURE_STEPS = 4
-NB_PASS_PER_IMAGES = 1
+NB_PASS_PER_IMAGES = 8
 RADAR_NORMALIZATION = 60.0
 DEFAULT_VALUE = -1
 

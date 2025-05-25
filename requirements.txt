@@ -10,3 +10,4 @@ pyproj
 h5py
 imageio
 datasets
+huggingface_hub[cli]
