@@ -250,7 +250,7 @@ def save_image(dict_return, save_hf_dataset, data_datetime_str, lock):
             # Ensure directory exists before saving
             os.makedirs(os.path.dirname(file_name), exist_ok=True)
 
-            np.savez(file_name, dict_return[key])
+            np.savez_compressed(file_name, dict_return[key])
 
     dict_data = {
             "radar_file_path_future": get_file_name("radar_future", random_id, hour),
