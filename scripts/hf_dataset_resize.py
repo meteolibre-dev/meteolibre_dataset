@@ -350,15 +350,22 @@ with open(os.path.join(save_hf_dataset, "index.json"), "w") as f:
 num_workers = 8 # Use number of cores, default to 4 if not available
 print(f"Using {num_workers} worker threads.")
 
+# create a random permutation of range(len_total)
+index_permutation = np.random.permutation(range(len_total))
+
 with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
     futures = []
     # Use tqdm here to track the submission of tasks
     for _ in range(NB_PASS_PER_IMAGES):
         for i in tqdm(range(len_total), desc="Submitting tasks"):
+            
+            # shuffle the index ()
+            new_i = index_permutation[i]
+
             # Submit the worker function to the executor
             future = executor.submit(
                 process_index,
-                i,
+                new_i,
                 index, # Pass index_dataframe
                 nb_back_steps,
                 nb_future_steps,
