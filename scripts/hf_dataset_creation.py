@@ -23,28 +23,8 @@ from datasets import (
 # --- 0. Prerequisite: load the index json dataframe OR CREATE IT ---
 json_path = "../data/hf_dataset/index.json"
 
-dict_value = {"radar_file_path_future" : [],
-        "radar_file_path_back" : [],
-        "groundstation_file_path_future"  : [],
-        "groundstation_file_path_back" : [],
-        "ground_height_file_path" : [],
-        "hour" : [],
-        "minute" : []}
 
-with open(json_path, "r") as file:
-    for line in file:
-        dict_value_tmp = {**dict_value, **eval(line.strip())}
-        
-        for key in dict_value.keys():
-            dict_value[key].append(dict_value_tmp[key])
-
-
-# create the dataframe from the list of lines
-index_data = pd.DataFrame(
-    dict_value,
-)
-
-# index_data = pd.read_json(json_path, orient='columns', lines=True)
+index_data = pd.read_json(json_path, orient='columns', lines=True)
 
 print(index_data.head())  # Display the first few records for verification
 print(index_data.columns)
@@ -149,7 +129,6 @@ dataset = Dataset.from_generator(
     writer_batch_size=500,
     gen_kwargs={"index_records": index_data},  # Pass your index here
 )
-
 
 # --- 4. (Optional) Inspect the dataset ---
 print(f"\nDataset object: {dataset}")
