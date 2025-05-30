@@ -12,6 +12,12 @@ pip3 install -r requirements.txt
 gsutil cp gs://meteofrance-preprocess/2ad89e9d0b014ad0fc3b605dc69b9d41.parquet data/datagouv/
 gsutil cp gs://meteofrance-preprocess/f0742d32016f83444e7da3b4b629f2e1.parquet data/datagouv/
 
+sudo apt-get install unzip
+sudo apt-get install zip
+
+gsutil cp gs://meteofrance-preprocess/hf_dataset.zip data/hf_dataset.zip
+unzip data/hf_dataset.zip -d data/hf_dataset
+
 # install gh
 (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
 	&& sudo mkdir -p -m 755 /etc/apt/keyrings \

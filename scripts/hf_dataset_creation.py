@@ -23,7 +23,6 @@ from datasets import (
 # --- 0. Prerequisite: load the index json dataframe OR CREATE IT ---
 json_path = "../data/hf_dataset/index.json"
 
-
 index_data = pd.read_json(json_path, orient='columns', lines=True)
 
 print(index_data.head())  # Display the first few records for verification
