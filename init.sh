@@ -16,7 +16,7 @@ sudo apt-get install unzip
 sudo apt-get install zip
 
 gsutil cp gs://meteofrance-preprocess/hf_dataset.zip data/hf_dataset.zip
-unzip data/hf_dataset.zip -d data/hf_dataset
+unzip data/hf_dataset.zip -d data/
 
 # install gh
 (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
@@ -31,5 +31,5 @@ unzip data/hf_dataset.zip -d data/hf_dataset
 sudo apt update
 sudo apt install gh
 
-#git config --global user.email "adrienbufort@gmail.com"
-#git config --global user.name "Adrien B"
+git config --global user.email "adrienbufort@gmail.com"
+git config --global user.name "Adrien B"
