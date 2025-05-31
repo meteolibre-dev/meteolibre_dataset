@@ -29,20 +29,20 @@ index_file_lock = threading.Lock()
 def max_pool_2x2(frames):
     """
     Downsamples frames by a factor of 2 using max pooling.
-    Assumes input frames have shape (H, W, T).
+    Assumes input frames have shape (H, W, T) and so you want to reduce to (H/2, W/2, T).
     """
     H, W, T = frames.shape
-    # Ensure dimensions are even for simple 2x2 pooling
+    # Ensure dimensions are even for 2x2 pooling
     if H % 2 != 0 or W % 2 != 0:
-        raise ValueError(
-            f"Frame dimensions ({H}, {W}) must be even for 2x2 max pooling."
-        )
+        # Handle odd dimensions if necessary, e.g., by padding or cropping
+        # For now, assuming even dimensions based on typical use cases
+        raise ValueError("Input frame dimensions must be even for 2x2 max pooling.")
 
-    # Reshape to group into 2x2 blocks: (H/2, 2, W/2, 2, T)
-    # Then take the maximum over the 2x2 block dimensions (axes 1 and 3)
+    # Reshape to group 2x2 blocks and apply max pooling
+    # (H, W, T) -> (H/2, 2, W/2, 2, T) -> max over axes 1 and 3 -> (H/2, W/2, T)
     pooled_frames = frames.reshape(H // 2, 2, W // 2, 2, T).max(axis=(1, 3))
-    return pooled_frames
 
+    return pooled_frames
 
 def generate_data_point(
     index_dataframe,
@@ -75,8 +75,8 @@ def generate_data_point(
     dict_return = {}
 
     # now for every image, we select only a random 256x256 patch
-    x = random.randint(0, shape_image // 2 - shape_extrated_image)
-    y = random.randint(0, shape_image // 2 - shape_extrated_image)
+    x = random.randint(0, shape_image - shape_extrated_image * 2)
+    y = random.randint(0, shape_image - shape_extrated_image * 2)
 
     array_future_list = []
     array_back_list = []
@@ -88,7 +88,7 @@ def generate_data_point(
 
     for future in range(nb_future_steps):
         path_file = os.path.join(
-            MAIN_DIR, str(index_dataframe["radar_file_path"].iloc[index + future])
+            MAIN_DIR, str(index_dataframe["radar_file_path"].iloc[index + 1 + future])
         )
 
         # take
@@ -124,16 +124,17 @@ def generate_data_point(
         )["image"]
 
         # maxpool
-        array_ground_station = max_pool_2x2(array_ground_station)
-
         array_ground_station = array_ground_station[
-            x : (x + shape_extrated_image),
-            y : (y + shape_extrated_image),
+            x : (x + shape_extrated_image * 2),
+            y : (y + shape_extrated_image * 2),
+            :
         ]
+
+        array_ground_station = max_pool_2x2(array_ground_station)
 
         array_future_groundstation_list.append(array_ground_station)
 
-    for back in range(-nb_back_steps, 0):
+    for back in range(-nb_back_steps, 1):
         path_file = os.path.join(
             MAIN_DIR,
             str(index_dataframe["radar_file_path"].iloc[index + back]),
@@ -177,12 +178,14 @@ def generate_data_point(
             )
         )["image"]
 
+        array_ground_station = array_ground_station[
+            x : (x + shape_extrated_image * 2),
+            y : (y + shape_extrated_image * 2),
+            :
+        ]
+
         array_ground_station = max_pool_2x2(array_ground_station)
 
-        array_ground_station = array_ground_station[
-            x : (x + shape_extrated_image),
-            y : (y + shape_extrated_image),
-        ]
         array_back_groundstation_list.append(array_ground_station)
 
     dict_return["hour"] = np.int32(current_date.hour)
