@@ -5,4 +5,5 @@
 python3 hf_dataset_resize.py
 
 # we push it to the hub
-python3 hf_dataset_creation.py
+zip -r hf_dataset.zip hf_dataset/
+gsutil cp hf_dataset.zip gs://meteofrance-preprocess/
