@@ -147,7 +147,7 @@ def generate_data_point(
         # convert delta time in minutes
         delta_time_minutes = delta_time.total_seconds() / 60
 
-        if delta_time < datetime.timedelta(hours=3):
+        if delta_time < datetime.timedelta(hours=(nb_back_steps//2 + 1)):
             array = np.array(
                 h5py.File(path_file, "r")["dataset1"]["data1"]["data"][
                     x : (x + shape_extrated_image * 2) : 2,
