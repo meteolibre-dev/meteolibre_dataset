@@ -27,32 +27,28 @@ Run the container:
 docker run -it meteolibre_dataset /bin/bash
 ```
 
-Inside the container, you can run the initialization script:
+Inside the container, run:
 ```bash
-./init.sh
-cd meteolibre_dataset/scripts/
+bash init.sh
+# Activate the Python virtual environment
+source venv/bin/activate
+cd scripts
 bash download_all.sh
-```
+```  
+*(This will download and preprocess both Météo-France and ground station data.)*
 
 ### Manual Installation
 
-1. Clone the repository:
+Clone the repository and prepare the environment:
 ```bash
 git clone https://github.com/your_username/meteolibre_dataset.git
 cd meteolibre_dataset
+bash init.sh
+# Activate the Python virtual environment
+source venv/bin/activate
 ```
 
-2. Install the required dependencies using pip:
-```bash
-pip install -r requirements.txt
-```
-
-3. Run the initialization script:
-```bash
-./init.sh
-cd meteolibre_dataset/scripts/
-bash download_all.sh
-```
+See the **Getting Started** section below for the full pipeline execution.
 
 ## Data
 
@@ -63,26 +59,72 @@ The dataset is built from two main sources:
 
 The preprocessing steps involve cleaning, transforming, and aligning data from both sources before fusion.
 
-## Usage
+## Getting Started
 
-### Downloading Data
+This section guides you through setting up the environment, downloading data, preprocessing, and generating the final Hugging Face dataset.
 
-To download all necessary raw data, run the main download script:
+### 1. Setup & Installation
+
+Clone the repository and initialize the environment:
 ```bash
-./scripts/download_all.sh
+git clone https://github.com/your_username/meteolibre_dataset.git
+cd meteolibre_dataset
+bash init.sh
+# Activate the Python virtual environment
+source venv/bin/activate
 ```
-*(Note: This script may require specific credentials or access to Météo-France data sources not included in this repository.)*
 
-### Preprocessing and Dataset Creation
+### 2. Download Raw Data
 
-After downloading the raw data, you can run the preprocessing and dataset creation scripts. The main steps involve:
+Run the main download script to fetch Météo-France HDF5 files and ground station data:
+```bash
+cd scripts
+bash download_all.sh
+```
 
-1.  Preprocessing ground station data: `scripts/preprocess_groundstations.py`
-2.  Writing ground station data to NPZ format: `scripts/groundstation_npz_writing.py`
-3.  Creating the Hugging Face dataset from processed data: `scripts/hf_dataset_creation.py`
-4.  Resizing the Hugging Face dataset (if needed): `scripts/hf_dataset_resize.py`
+### 3. Preprocess Ground Station Data
 
-You can typically run these scripts in sequence after the data download is complete.
+Filter, transform, and project the raw ground station Parquet files:
+```bash
+python preprocess_groundstations.py
+```
+
+### 4. Create NPZ Files for Ground Stations
+
+Convert filtered station data into 2D image-like NPZ files:
+```bash
+python groundstation_npz_writing.py
+```
+
+### 5. Create File Index
+
+Synchronize radar (.h5) and station (.npz) files by timestamp:
+```bash
+python index_creation.py
+```
+
+### 6. Generate Hugging Face Dataset
+
+Resize data, assemble temporal sequences, and build the HF dataset:
+```bash
+bash hf_generation.sh
+```
+This will produce a `hf_dataset/` folder under `data/`.
+
+### 7. (Optional) Visualize the Dataset
+
+Use the visualization script to inspect samples:
+```bash
+python hf_dataset_visualization.py
+```
+
+### 8. Load the Dataset in Python
+
+```python
+from datasets import load_from_disk
+dataset = load_from_disk("data/hf_dataset")
+print(dataset)
+```
 
 ## Project Structure
 
@@ -94,16 +136,40 @@ You can typically run these scripts in sequence after the data download is compl
 ├── README.md
 ├── requirements.txt
 ├── reprojected_gebco_32630_500m_padded.png
-├── data/                 # Directory for raw and processed data
-├── meteolibre_dataset/   # Main package directory (if applicable)
-├── scripts/
-│   ├── download_all.sh
-│   ├── download_groundstation.py
+├── data/                         # Raw and processed data
+│   ├── datagouv/                 # Data.gouv station metadata
+│   ├── groundstations/           # Raw station CSVs
+│   ├── groundstations_parquet/   # Unpacked Parquet versions
+│   ├── groundstations_filter/    # Filtered & transformed station data
+│   ├── groundstation_npz/        # NPZ images of station data
+│   ├── h5/                        # Météo-France HDF5 files
+│   └── hf_dataset/               # Final Hugging Face dataset output
+├── meteolibre_dataset/           # BUFR preprocessing module
+├── scripts/                      # Pipeline scripts
+│   ├── download_all.sh           # Full download & preprocess pipeline
+│   ├── get_bucket_list_files.py  # List MF files in GCS bucket
+│   ├── download_h5_files.py      # Download HDF5 from GCS
+│   ├── download_groundstation.py # Fetch station CSVs from data.gouv
+│   ├── preprocess_groundstations.py
 │   ├── groundstation_npz_writing.py
-│   ├── hf_dataset_creation.py
-│   ├── hf_dataset_resize.py
-│   └── preprocess_groundstations.py
-└── tables/               # Directory for lookup tables or metadata
+│   ├── index_creation.py         # Synchronize radar & station timestamps
+│   ├── hf_generation.sh          # Generate & push HF dataset
+│   ├── hf_dataset_resize.py      # Resize & pack HF dataset
+│   └── hf_dataset_visualization.py
+└── tables/                       # BUFR descriptor lookup tables
+``` 
+
+## Contributing
+
+Contributions, feedback, and issues are welcome! Please open an issue or submit a pull request on GitHub.
+
+## Citation
+
+TODO BE WRITE IN THE NEAR FUTURE
+If you use this pipeline or dataset in your research, please cite:
+
+```
+Adrien Bufort et al., "meteolibre_dataset: A fused Météo-France and ground station weather dataset", 2025.
 ```
 
 ## License
