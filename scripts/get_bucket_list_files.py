@@ -1,58 +1,81 @@
-import os
+"""
+This script lists files in a Google Cloud Storage bucket, processes the file names to extract dates,
+filters them, and saves the list to a Parquet file.
+"""
+
+import pandas as pd
 from google.cloud import storage
 import google.auth
 
-import pandas as pd
+# --- Constants ---
+BUCKET_NAME = "meteofrancedata"
+OUTPUT_FILE = "list_files.parquet"
 
-bucket_name = "meteofrancedata"
 
-## llist the files in the bucket
-# Check if running on Google Cloud Environment
-if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") is None:
-    # Load credentials from a service account key file if not on GCE
+def get_file_list_from_bucket(bucket_name: str) -> list[str]:
+    """
+    Lists all files in a given GCS bucket.
+
+    Args:
+        bucket_name: The name of the GCS bucket.
+
+    Returns:
+        A list of file names.
+    """
     try:
-        credentials, project = google.auth.default()
-        storage_client = storage.Client(credentials=credentials)
+        # storage.Client() will automatically find and use credentials from
+        # the environment, including those set by `gcloud auth login`.
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(bucket_name)
+        return [blob.name for blob in bucket.list_blobs()]
     except google.auth.exceptions.DefaultCredentialsError:
-        print("Could not automatically determine credentials.  Please set GOOGLE_APPLICATION_CREDENTIALS or ensure you are running in a Google Cloud environment.")
-        storage_client = None # Handle the case where credentials are not available
-else:
-    storage_client = storage.Client()
+        print("Authentication failed. Please run 'gcloud auth login' or set GOOGLE_APPLICATION_CREDENTIALS.")
+        return []
+    except Exception as e:
+        print(f"An error occurred while accessing the bucket: {e}")
+        return []
 
-if storage_client:
-    bucket = storage_client.bucket(bucket_name)
 
-    blob_list = bucket.list_blobs()
+def process_file_list(file_list: list[str]) -> pd.DataFrame:
+    """
+    Processes a list of file names to extract and format dates.
 
-    list_name = []
+    Args:
+        file_list: A list of file names.
 
-    # save all the name
-    for blob in blob_list:
-        list_name.append(blob.name)
+    Returns:
+        A pandas DataFrame with processed and filtered data.
+    """
+    if not file_list:
+        return pd.DataFrame(columns=['name', 'date'])
 
-else:
-    print("Storage client not initialized. Check credentials.")
-    list_name = []
+    df = pd.DataFrame(file_list, columns=['name'])
+    # Extract date from filenames like 'T_IMFR27_C_LFPW_20250103224500.bufr.gz'
+    df["date"] = df["name"].str.extract(r"(\d{12})")
+    df["date"] = pd.to_datetime(df["date"], format="%Y%m%d%H%M")
+    df = df.sort_values(by="date")
+    # Filter for files at 0 or 30 minutes past the hour
+    df = df[df["date"].dt.minute.isin([0, 30])]
+    return df
 
-# count the number of element in the bucket
-print(len(list_name))
 
-# create a dataframe
-df = pd.DataFrame(list_name, columns=['name'])
+def main():
+    """
+    Main function to execute the script logic.
+    """
+    print(f"Fetching file list from bucket: {BUCKET_NAME}...")
+    file_list = get_file_list_from_bucket(BUCKET_NAME)
+    print(f"Found {len(file_list)} total files in the bucket.")
 
-# the file name look like T_IMFR27_C_LFPW_20250103224500.bufr.gz
-# we want to extract the date from the filename
-df["date"] = df["name"].str.extract(r"(\d{12})")
+    if file_list:
+        df = process_file_list(file_list)
+        print(f"Filtered down to {len(df)} files.")
+        print(f"Saving dataframe to {OUTPUT_FILE}...")
+        df.to_parquet(OUTPUT_FILE, index=False)
+        print("Done.")
+    else:
+        print("No files found or error occurred. Exiting.")
 
-# convert the date to datetime
-df["date"] = pd.to_datetime(df["date"], format="%Y%m%d%H%M")
-# sort the dataframe by date
-df = df.sort_values(by="date")
 
-# keep only the value that have a frequency of 1 hour or 30 minutes
-df = df[df["date"].dt.minute.isin([0, 30])]
-
-print("number of files : ", len(df))
-
-# save the dataframe
-df.to_parquet('list_files.parquet', index=False)
+if __name__ == "__main__":
+    main()
