@@ -101,7 +101,7 @@ def generate_data_point(
 
         array = array.astype(np.int32)
 
-        array[array == 65535] = -DEFAULT_VALUE
+        array[array == 65535] = DEFAULT_VALUE
 
         # if there is nothing > 0, we go on the next item
         if np.sum(array > 0.1) <= 10:
@@ -113,7 +113,7 @@ def generate_data_point(
         array_future_list.append(array)
 
         # dict_return["radar_mask_future_" + str(future)] = array != (
-        #     -DEFAULT_VALUE / RADAR_NORMALIZATION
+        #     DEFAULT_VALUE / RADAR_NORMALIZATION
         # )
 
         array_ground_station = np.load(
@@ -155,7 +155,7 @@ def generate_data_point(
                 ]
             )
             array = array.astype(np.int32)
-            array[array == 65535] = -DEFAULT_VALUE
+            array[array == 65535] = DEFAULT_VALUE
 
         else:
             # print("bad delta time", delta_time)
