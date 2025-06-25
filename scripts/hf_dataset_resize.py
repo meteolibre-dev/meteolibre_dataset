@@ -161,7 +161,7 @@ def generate_data_point(
             # print("bad delta time", delta_time)
             array = (
                 np.ones((shape_extrated_image, shape_extrated_image), dtype=np.float32)
-                * -DEFAULT_VALUE
+                * DEFAULT_VALUE
             )
 
         array = np.float32(array) / RADAR_NORMALIZATION  # normalization
