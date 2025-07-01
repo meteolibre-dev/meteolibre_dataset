@@ -104,7 +104,7 @@ def generate_data_point(
         array[array == 65535] = DEFAULT_VALUE
 
         # if there is nothing > 0, we go on the next item
-        if np.sum(array > 0.1) <= 10:
+        if np.sum(array > 0.5) <= 10:
             # print("not enaught good point")
             return None
 
@@ -344,9 +344,10 @@ os.makedirs(save_hf_dataset, exist_ok=True)
 for data_type in ["radar_future", "radar_back", "groundstation_future", "groundstation_back", "ground_height_image"]:
     os.makedirs(os.path.join(save_hf_dataset, data_type), exist_ok=True)
 
-# Initialize the index.json file (overwrite if exists)
-with open(os.path.join(save_hf_dataset, "index.json"), "w") as f:
-    pass # Just create an empty file or write a header if needed
+# Initialize the index.json file (do not overwrite if exists)
+if not os.path.exists(os.path.join(save_hf_dataset, "index.json")):
+    with open(os.path.join(save_hf_dataset, "index.json"), "w") as f:
+        pass # Just create an empty file or write a header if needed
 
 # Use ThreadPoolExecutor for parallel processing
 # Determine the number of workers, e.g., number of CPU cores
