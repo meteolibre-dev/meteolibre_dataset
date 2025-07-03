@@ -9,6 +9,10 @@ columns_measurements = [
     "FF",
     "DD",
     "T",
+    "U",
+    "PMER",
+    "N",
+    "VV",
 ]
 
 columns_positions = ["position_x", "position_y"]

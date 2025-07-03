@@ -4,12 +4,15 @@ This repository is dedicated to the preprocessing of Météo-France (MF) data an
 
 The primary goal is to take raw data from Météo-France and ground stations, apply necessary preprocessing steps, and fuse them into a single, ready-to-use (huggingface) dataset.
 
+One can freely donwload the different version of the dataset :
+
+gs://meteofrance-preprocess/hf_dataset_v4.zip
+
 ## Features
 
 - Download scripts for raw Météo-France and ground station data.
 - Preprocessing pipelines for both data sources.
 - Data fusion mechanism to combine different data types.
-- Integration with Hugging Face Datasets for easy access and use.
 
 ## Setup
 
@@ -58,6 +61,20 @@ The dataset is built from two main sources:
 2.  **Ground Station Data:** Data collected from various ground weather stations.
 
 The preprocessing steps involve cleaning, transforming, and aligning data from both sources before fusion.
+
+You can access the preprocess dataset here :
+
+gs://meteofrance-preprocess/hf_dataset_v4.zip
+
+or here : 
+
+https://huggingface.co/datasets/Forbu14/meteolibre_france
+
+The global idea is here : 
+
+![Global idea](images/global_idea.png)
+
+
 
 ## Getting Started
 
@@ -118,7 +135,7 @@ Use the visualization script to inspect samples:
 python hf_dataset_visualization.py
 ```
 
-### 8. Load the Dataset in Python
+### 8. Download the dataset
 
 ```python
 from datasets import load_from_disk
