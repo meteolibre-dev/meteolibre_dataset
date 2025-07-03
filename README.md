@@ -72,6 +72,8 @@ https://huggingface.co/datasets/Forbu14/meteolibre_france
 
 The global idea is here : 
 
+The core of this project is to create a rich dataset for weather forecasting. We start with raw data from Météo-France's radar network and supplement it with readings from ground stations. The primary challenge is to transform this heterogeneous data into a format suitable for deep learning models. Our process involves several key steps: first, we align the data from different sources by timestamp. Then, we project the ground station data onto a 2D grid, creating image-like representations. Finally, we extract time series of 256x256 pixel image patches from both the radar and ground station data. These patches are centered over areas of interest and represent a sequence of weather conditions, which will be used to train a model to predict future weather patterns.
+
 ![Global idea](images/global_idea.png)
 
 
