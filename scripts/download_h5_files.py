@@ -54,7 +54,8 @@ def main():
             if name.endswith(".h5"):
                 filename = os.path.basename(name)
                 output_path = os.path.join(output_dir, filename)
-                download_file(bucket_name, name, output_path)
+                if not os.path.exists(output_path):
+                    download_file(bucket_name, name, output_path)
 
     except FileNotFoundError:
         print(f"Error: CSV file not found at {csv_file}")

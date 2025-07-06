@@ -58,7 +58,10 @@ columns_taken = [
     "QHTX",
     "DG",
     "QDG",
-    "NOM_USUEL" # Add NOM_USUEL here
+    "NOM_USUEL", # Add NOM_USUEL here
+    "U",
+    "PMER",
+    "VV",
 ]
 
 # Define schema for reading Parquet (performance boost)
@@ -102,7 +105,10 @@ schema = {
     "QHTX": pl.Float32,
     "DG": pl.Float32,
     "QDG": pl.Float32,
-    "NOM_USUEL": pl.String  # Assuming NOM_USUEL is a string
+    "NOM_USUEL": pl.String,  # Assuming NOM_USUEL is a string
+    "U": pl.Float32,
+    "PMER": pl.Float32,
+    "VV": pl.Float32,
 }
 
 

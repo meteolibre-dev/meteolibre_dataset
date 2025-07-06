@@ -11,7 +11,6 @@ columns_measurements = [
     "T",
     "U",
     "PMER",
-    "N",
     "VV",
 ]
 
@@ -196,7 +195,7 @@ def process_single_timestamp(
     return f"Processed {file_name_to_write}"
 
 
-def process_h5_files_and_create_npz(
+def process_h5_files_and_create_npz_multithread(
     dir_h5: str,
     groundstations_info_path: str,
     dir_npz_preprocess: str,
@@ -259,7 +258,7 @@ def process_h5_files_and_create_npz(
     df_files = df_files.sort(by="datetime")
 
     ####### Second get ground station information ########
-
+    print(groundstations_info_path)
     groundstations_info_df = pl.read_parquet(
         groundstations_info_path, columns=columns_measurements + columns_positions + ["datetime"]
     )
@@ -352,7 +351,7 @@ def process_h5_files_and_create_npz(
 
 
 if __name__ == "__main__":
-    process_h5_files_and_create_npz(
+    process_h5_files_and_create_npz_multithread(
         dir_h5,
         groundstations_info_path,
         dir_npz_preprocess,
