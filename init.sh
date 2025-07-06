@@ -6,7 +6,8 @@ sudo apt install python3.11-venv
 python3 -m venv venv
 source venv/bin/activate
 
-pip3 install -r requirements.txt
+pip3 install uv
+uv pip install -p .
 
 # update data
 gsutil cp gs://meteofrance-preprocess/2ad89e9d0b014ad0fc3b605dc69b9d41.parquet data/datagouv/

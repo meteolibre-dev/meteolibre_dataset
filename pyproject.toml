@@ -1,0 +1,21 @@
+[project]
+name = "meteolibre-dataset"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "rasterio",
+    "pandas",
+    "tqdm",
+    "matplotlib",
+    "numpy",
+    "google-cloud-storage",
+    "pyarrow",
+    "polars",
+    "pyproj",
+    "h5py",
+    "imageio",
+    "datasets",
+    "huggingface_hub[cli]",
+]
