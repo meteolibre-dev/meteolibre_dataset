@@ -14,7 +14,7 @@ from pyproj import Transformer
 import matplotlib.pyplot as plt
 
 
-path = "/home/adrienbufort/data_assets/gebco_2024_n53.0_s41.0_w-8.0_e10.0.tif"
+path = "../data/assets/GEBCO_01_Mar_2025_b49786f4ebf5_gebco_2024_n53.0_s41.0_w-8.0_e10.0.tif"
 output_path = "reprojected_gebco_32630.tif"  # Define output file path
 dst_crs = "EPSG:32630"  # Define target CRS
 
@@ -78,7 +78,6 @@ with rasterio.open(output_path) as src:
 
     # Plot the raster data
     plt.imshow(data, cmap="terrain")
-    plt.colorbar(label="Elevation (meters)")
     plt.title("Reprojected GEBCO Data")
     plt.show()
 
@@ -128,8 +127,8 @@ final_image[final_image > 10000] = 0
 
 # save the image
 plt.imshow(final_image, cmap="terrain")
-plt.colorbar(label="Elevation (meters)")
 plt.title("Reprojected GEBCO Data")
+plt.colorbar()
 plt.savefig("reprojected_gebco_32630_500m_padded.png")
 
 # also save the array in numpy format

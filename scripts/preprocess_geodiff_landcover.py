@@ -13,8 +13,8 @@ from pyproj import Transformer
 
 # --- Global Constants ---
 EPSG = 32630
-TARGET_RESOLUTION = 1000  # meters
-IMAGE_SIZE = 1736  # pixels
+TARGET_RESOLUTION = 500  # meters
+IMAGE_SIZE = 3472  # pixels
 DST_CRS = f"EPSG:{EPSG}"
 
 # Define France bounding box in WGS84 (lat/lon)
@@ -44,6 +44,7 @@ def process_landcover_file(class_number):
     output_path = f"consensus_full_class_{class_number}_32630_france.tif"
     output_plot_path = f"consensus_full_class_{class_number}_france.png"
     output_cropped_plot_path = f"consensus_full_class_{class_number}_france_padded.png"
+    output_cropped_plot_path_npz = f"consensus_full_class_{class_number}_france_padded.npz"
 
     print(f"--- Starting processing for landcover class {class_number} ---")
     print(f"Input file: {input_path}")
@@ -154,6 +155,9 @@ def process_landcover_file(class_number):
     plt.close()
     print(f"Saved final plot to {output_cropped_plot_path}")
     print(f"--- Finished processing for landcover class {class_number} ---\n")
+
+    # also save the image as a compressed version
+    np.savez_compressed(output_cropped_plot_path_npz, final_image)
 
 
 def main():

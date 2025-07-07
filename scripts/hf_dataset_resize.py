@@ -44,6 +44,7 @@ def max_pool_2x2(frames):
 
     return pooled_frames
 
+
 def generate_data_point(
     index_dataframe,
     i,
@@ -51,6 +52,7 @@ def generate_data_point(
     nb_future_steps,
     shape_image,
     ground_height_image,
+    landcover_image,
 ):
     """
     Generate a data point for the HF dataset.
@@ -125,16 +127,14 @@ def generate_data_point(
 
         # maxpool
         array_ground_station = array_ground_station[
-            x : (x + shape_extrated_image * 2),
-            y : (y + shape_extrated_image * 2),
-            :
+            x : (x + shape_extrated_image * 2), y : (y + shape_extrated_image * 2), :
         ]
 
         array_ground_station = max_pool_2x2(array_ground_station)
 
         array_future_groundstation_list.append(array_ground_station)
 
-    for back in range(-nb_back_steps, 1):
+    for back in range(-nb_back_steps + 1, 1):
         path_file = os.path.join(
             MAIN_DIR,
             str(index_dataframe["radar_file_path"].iloc[index + back]),
@@ -147,7 +147,7 @@ def generate_data_point(
         # convert delta time in minutes
         delta_time_minutes = delta_time.total_seconds() / 60
 
-        if delta_time < datetime.timedelta(hours=(nb_back_steps//2 + 1)):
+        if delta_time < datetime.timedelta(hours=(nb_back_steps // 2 + 1)):
             array = np.array(
                 h5py.File(path_file, "r")["dataset1"]["data1"]["data"][
                     x : (x + shape_extrated_image * 2) : 2,
@@ -179,9 +179,7 @@ def generate_data_point(
         )["image"]
 
         array_ground_station = array_ground_station[
-            x : (x + shape_extrated_image * 2),
-            y : (y + shape_extrated_image * 2),
-            :
+            x : (x + shape_extrated_image * 2), y : (y + shape_extrated_image * 2), :
         ]
 
         array_ground_station = max_pool_2x2(array_ground_station)
@@ -194,6 +192,12 @@ def generate_data_point(
     # dd ground height image
     dict_return["ground_height_image"] = ground_height_image[
         x : (x + shape_extrated_image * 2) : 2, y : (y + shape_extrated_image * 2) : 2
+    ]
+
+    dict_return["landcover_image"] = landcover_image[
+        x : (x + shape_extrated_image * 2) : 2,
+        y : (y + shape_extrated_image * 2) : 2,
+        :,
     ]
 
     dict_return["radar_future"] = np.stack(array_future_list, axis=0)
@@ -247,8 +251,8 @@ def save_image(dict_return, save_hf_dataset, data_datetime_str, lock):
             or key.startswith("groundstation_future")
             or key.startswith("groundstation_back")
             or key.startswith("ground_height_image")
+            or key.startswith("landcover_image")
         ):
-
             file_name = get_file_name(key, random_id, hour)
             # Ensure directory exists before saving
             os.makedirs(os.path.dirname(file_name), exist_ok=True)
@@ -256,30 +260,47 @@ def save_image(dict_return, save_hf_dataset, data_datetime_str, lock):
             np.savez_compressed(file_name, dict_return[key])
 
     dict_data = {
-            "radar_file_path_future": get_file_name("radar_future", random_id, hour),
-            "radar_file_path_back": get_file_name("radar_back", random_id, hour),
-            "groundstation_file_path_future": get_file_name(
-                "groundstation_future", random_id, hour
-            ),
-            "groundstation_file_path_back": get_file_name("groundstation_back", random_id, hour),
-            "ground_height_file_path": get_file_name("ground_height_image", random_id, hour),
-            "hour": dict_return["hour"].item(),
-            "minute": dict_return["minute"].item(),
-            "time_radar_back": dict_return["time_radar_back"].tolist(),
-            "datetime": data_datetime_str,
-            "id": random_id,
-        }
+        "radar_file_path_future": get_file_name("radar_future", random_id, hour),
+        "radar_file_path_back": get_file_name("radar_back", random_id, hour),
+        "groundstation_file_path_future": get_file_name(
+            "groundstation_future", random_id, hour
+        ),
+        "groundstation_file_path_back": get_file_name(
+            "groundstation_back", random_id, hour
+        ),
+        "ground_height_file_path": get_file_name(
+            "ground_height_image", random_id, hour
+        ),
+        "landcover_file_path": get_file_name(
+            "landcover_image", random_id, hour
+        ),
+        "hour": dict_return["hour"].item(),
+        "minute": dict_return["minute"].item(),
+        "time_radar_back": dict_return["time_radar_back"].tolist(),
+        "datetime": data_datetime_str,
+        "id": random_id,
+    }
 
     # we want to append the dict_data to a json file
     # Use the lock for thread-safe writing
     with lock:
         with open(os.path.join(save_hf_dataset, "index.json"), "a") as f:
-            
             json.dump(dict_data, f)
-            f.write('\n')
+            f.write("\n")
+
 
 # New worker function
-def process_index(i, index_dataframe, nb_back_steps, nb_future_steps, shape_image, ground_height_image, save_hf_dataset, lock):
+def process_index(
+    i,
+    index_dataframe,
+    nb_back_steps,
+    nb_future_steps,
+    shape_image,
+    ground_height_image,
+    landcover_image,
+    save_hf_dataset,
+    lock,
+):
     """
     Processes a single index to generate and save a data point.
     """
@@ -294,6 +315,7 @@ def process_index(i, index_dataframe, nb_back_steps, nb_future_steps, shape_imag
         nb_future_steps,
         shape_image,
         ground_height_image,
+        landcover_image,
     )
 
     if dict_result is not None:
@@ -304,6 +326,9 @@ def process_index(i, index_dataframe, nb_back_steps, nb_future_steps, shape_imag
 # --- 0. Prerequisite: load main variable ---
 MAIN_DIR = "../data/"
 ground_height_image = MAIN_DIR + "assets/reprojected_gebco_32630_500m_padded.npy"
+landcover_image_path = MAIN_DIR + "assets/consensus_full_class_{}_france_padded.npz"
+
+
 index_file = MAIN_DIR + "index.parquet"
 save_hf_dataset = "../data/hf_dataset/"
 
@@ -335,23 +360,42 @@ ground_height_image = (ground_height_image - np.mean(ground_height_image)) / np.
     ground_height_image
 )
 
+# manage landcover
+# load landcover data
+landcover_list = []
+
+for i in [4, 7, 9, 12]:
+    landcover_image = landcover_image_path.format(i)
+    landcover_image = (landcover_image - np.mean(landcover_image)) / np.std(
+        landcover_image
+    )
+    landcover_list.append(np.load(landcover_image)["arr_0"])
+landcover_image = np.stack(landcover_list, axis=2)
+
+
 # loop over the index and create the dataset
 len_total = len(index) - nb_back_steps - nb_future_steps
 
 # Create necessary directories for saving files
 os.makedirs(save_hf_dataset, exist_ok=True)
 # Create subdirectories for different data types
-for data_type in ["radar_future", "radar_back", "groundstation_future", "groundstation_back", "ground_height_image"]:
+for data_type in [
+    "radar_future",
+    "radar_back",
+    "groundstation_future",
+    "groundstation_back",
+    "ground_height_image",
+]:
     os.makedirs(os.path.join(save_hf_dataset, data_type), exist_ok=True)
 
 # Initialize the index.json file (do not overwrite if exists)
 if not os.path.exists(os.path.join(save_hf_dataset, "index.json")):
     with open(os.path.join(save_hf_dataset, "index.json"), "w") as f:
-        pass # Just create an empty file or write a header if needed
+        pass  # Just create an empty file or write a header if needed
 
 # Use ThreadPoolExecutor for parallel processing
 # Determine the number of workers, e.g., number of CPU cores
-num_workers = 8 # Use number of cores, default to 4 if not available
+num_workers = 8  # Use number of cores, default to 4 if not available
 print(f"Using {num_workers} worker threads.")
 
 # create a random permutation of range(len_total)
@@ -362,7 +406,6 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
     # Use tqdm here to track the submission of tasks
     for _ in range(NB_PASS_PER_IMAGES):
         for i in tqdm(range(len_total), desc="Submitting tasks"):
-            
             # shuffle the index ()
             new_i = index_permutation[i]
 
@@ -370,13 +413,14 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
             future = executor.submit(
                 process_index,
                 new_i,
-                index, # Pass index_dataframe
+                index,  # Pass index_dataframe
                 nb_back_steps,
                 nb_future_steps,
                 shape_image,
                 ground_height_image,
+                landcover_image,
                 save_hf_dataset,
-                index_file_lock # Pass the lock
+                index_file_lock,  # Pass the lock
             )
             futures.append(future)
 
