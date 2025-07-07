@@ -366,10 +366,9 @@ landcover_list = []
 
 for i in [4, 7, 9, 12]:
     landcover_image = landcover_image_path.format(i)
-    landcover_image = (landcover_image - np.mean(landcover_image)) / np.std(
-        landcover_image
-    )
-    landcover_list.append(np.load(landcover_image)["arr_0"])
+    data = np.load(landcover_image)["arr_0"].astype(float)
+    data = (data - np.mean(data)) / np.std(data)
+    landcover_list.append(data)
 landcover_image = np.stack(landcover_list, axis=2)
 
 
