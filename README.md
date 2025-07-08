@@ -1,8 +1,14 @@
-This dataset was created thanks to meteofrance open data initiatives.
+This dataset was created thanks to meteofrance open data initiatives (Licence Ouverte Etalab 2.0).
 
 ![MeteoFrance](images/meteofrancelogo.png)
 
-This information has to be provided according to https://portail-api.meteofrance.fr/web/fr/cpu.
+This information has to be provided according to https://portail-api.meteofrance.fr/web/fr/DonneesPubliquesPaquetRadar/licence.
+
+Also ground station data are provided by data.gouv (https://www.data.gouv.fr/datasets/)
+
+![datagouv](images/datagouv.png)
+
+Topography data and land cover data are provided via https://portal.opentopography.org/ and https://www.earthenv.org/landcover.
 
 # meteolibre_dataset
 

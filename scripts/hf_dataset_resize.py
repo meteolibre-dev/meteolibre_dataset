@@ -106,7 +106,7 @@ def generate_data_point(
         array[array == 65535] = DEFAULT_VALUE
 
         # if there is nothing > 0, we go on the next item
-        if np.sum(array > 0.5) <= 10:
+        if np.sum(array > 0.2) <= 10:
             # print("not enaught good point")
             return None
 
