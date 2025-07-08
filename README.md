@@ -1,3 +1,9 @@
+This dataset was created thanks to meteofrance open data initiatives.
+
+![MeteoFrance](images/meteofrancelogo.png)
+
+This information has to be provided according to https://portail-api.meteofrance.fr/web/fr/cpu.
+
 # meteolibre_dataset
 
 This repository is dedicated to the preprocessing of Météo-France (MF) data and ground station data to create a unified dataset suitable for training machine learning models.
@@ -194,3 +200,4 @@ Adrien Bufort et al., "meteolibre_dataset: A fused Météo-France and ground sta
 ## License
 
 This project is licensed under the terms of the [LICENSE](LICENSE) file. (Apache 2.0)
+and also https://portail-api.meteofrance.fr/web/fr/cpu
