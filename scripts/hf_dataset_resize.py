@@ -106,9 +106,9 @@ def generate_data_point(
         array[array == 65535] = DEFAULT_VALUE
 
         # if there is nothing > 0, we go on the next item
-        if np.sum(array > 0.2) <= 10:
-            # print("not enaught good point")
-            return None
+        # if np.sum(array > 0.1) <= 10:
+        #     # print("not enaught good point")
+        #     return None
 
         array = np.float32(array) / RADAR_NORMALIZATION  # normalization
 
@@ -227,7 +227,7 @@ def save_image(dict_return, save_hf_dataset, data_datetime_str, lock):
     Returns:
         None
     """
-    random_id = str(random.randint(0, 1000000000))  # generate a random id for the image
+    random_id = str(random.randint(0, 10000000000))  # generate a random id for the image
 
     def get_file_name(key, random_id, hour):
         return os.path.join(
@@ -290,7 +290,7 @@ def save_image(dict_return, save_hf_dataset, data_datetime_str, lock):
 
 
 # New worker function
-def process_index(
+def process_index_multiple_passes(
     i,
     index_dataframe,
     nb_back_steps,
@@ -300,27 +300,31 @@ def process_index(
     landcover_image,
     save_hf_dataset,
     lock,
+    nb_passes,
 ):
     """
-    Processes a single index to generate and save a data point.
+    Processes a single index multiple times to generate and save multiple data points.
+    This function handles the NB_PASS_PER_IMAGES loop internally for better thread utilization.
     """
     # Get the datetime for this data point
     data_datetime = index_dataframe.index[int(i + nb_back_steps)]
     data_datetime_str = data_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
-    dict_result = generate_data_point(
-        index_dataframe,
-        i,
-        nb_back_steps,
-        nb_future_steps,
-        shape_image,
-        ground_height_image,
-        landcover_image,
-    )
+    # Process multiple passes for this index
+    for _ in range(nb_passes):
+        dict_result = generate_data_point(
+            index_dataframe,
+            i,
+            nb_back_steps,
+            nb_future_steps,
+            shape_image,
+            ground_height_image,
+            landcover_image,
+        )
 
-    if dict_result is not None:
-        # Pass the lock and datetime string to save_image
-        save_image(dict_result, save_hf_dataset, data_datetime_str, lock)
+        if dict_result is not None:
+            # Pass the lock and datetime string to save_image
+            save_image(dict_result, save_hf_dataset, data_datetime_str, lock)
 
 
 # --- 0. Prerequisite: load main variable ---
@@ -384,6 +388,7 @@ for data_type in [
     "groundstation_future",
     "groundstation_back",
     "ground_height_image",
+    "landcover_image",
 ]:
     os.makedirs(os.path.join(save_hf_dataset, data_type), exist_ok=True)
 
@@ -394,7 +399,7 @@ if not os.path.exists(os.path.join(save_hf_dataset, "index.json")):
 
 # Use ThreadPoolExecutor for parallel processing
 # Determine the number of workers, e.g., number of CPU cores
-num_workers = 8  # Use number of cores, default to 4 if not available
+num_workers = 6  # Use number of cores, default to 4 if not available
 print(f"Using {num_workers} worker threads.")
 
 # create a random permutation of range(len_total)
@@ -403,25 +408,25 @@ index_permutation = np.random.permutation(range(len_total))
 with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
     futures = []
     # Use tqdm here to track the submission of tasks
-    for _ in range(NB_PASS_PER_IMAGES):
-        for i in tqdm(range(len_total), desc="Submitting tasks"):
-            # shuffle the index ()
-            new_i = index_permutation[i]
+    for i in tqdm(range(len_total), desc="Submitting tasks"):
+        # shuffle the index ()
+        new_i = index_permutation[i]
 
-            # Submit the worker function to the executor
-            future = executor.submit(
-                process_index,
-                new_i,
-                index,  # Pass index_dataframe
-                nb_back_steps,
-                nb_future_steps,
-                shape_image,
-                ground_height_image,
-                landcover_image,
-                save_hf_dataset,
-                index_file_lock,  # Pass the lock
-            )
-            futures.append(future)
+        # Submit the worker function to the executor
+        future = executor.submit(
+            process_index_multiple_passes,
+            new_i,
+            index,  # Pass index_dataframe
+            nb_back_steps,
+            nb_future_steps,
+            shape_image,
+            ground_height_image,
+            landcover_image,
+            save_hf_dataset,
+            index_file_lock,  # Pass the lock
+            NB_PASS_PER_IMAGES,  # Pass the number of passes
+        )
+        futures.append(future)
 
     # The executor context manager waits for all futures to complete automatically.
 print("Dataset generation complete.")
