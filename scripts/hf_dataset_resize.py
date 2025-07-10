@@ -77,8 +77,8 @@ def generate_data_point(
     dict_return = {}
 
     # now for every image, we select only a random 256x256 patch
-    x = random.randint(0, shape_image - shape_extrated_image * 2)
-    y = random.randint(0, shape_image - shape_extrated_image * 2)
+    x = random.randint(400, shape_image - shape_extrated_image * 2 - 400)
+    y = random.randint(400, shape_image - shape_extrated_image * 2 - 400)
 
     array_future_list = []
     array_back_list = []
@@ -106,9 +106,9 @@ def generate_data_point(
         array[array == 65535] = DEFAULT_VALUE
 
         # if there is nothing > 0, we go on the next item
-        # if np.sum(array > 0.1) <= 10:
-        #     # print("not enaught good point")
-        #     return None
+        if np.sum(array > -0.1) <= 10:
+            print("not enaught good point")
+            return None
 
         array = np.float32(array) / RADAR_NORMALIZATION  # normalization
 
