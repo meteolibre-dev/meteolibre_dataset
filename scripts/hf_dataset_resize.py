@@ -214,12 +214,12 @@ def generate_data_point(
     return dict_return
 
 
-def save_image(dict_return, save_hf_dataset, data_datetime_str, lock):
+def save_image(dict_results, save_hf_dataset, data_datetime_str, lock):
     """
-    Save the image and update the index.
+    Save multiple images and update the index.
 
     Args:
-        dict_return (dict): The dictionary containing the data point.
+        dict_results (list): List of dictionaries containing the data points.
         save_hf_dataset (str): Path to save the HF dataset.
         data_datetime_str (str): The datetime string for the data point.
         lock (threading.Lock): The lock for thread-safe file writing.
@@ -227,8 +227,6 @@ def save_image(dict_return, save_hf_dataset, data_datetime_str, lock):
     Returns:
         None
     """
-    random_id = str(random.randint(0, 10000000000))  # generate a random id for the image
-
     def get_file_name(key, random_id, hour):
         return os.path.join(
             save_hf_dataset,
@@ -241,52 +239,61 @@ def save_image(dict_return, save_hf_dataset, data_datetime_str, lock):
             + ".npz",  # include random_id in the filename
         )
 
-    hour = dict_return["hour"].item()
+    # Collect all index data to write at once
+    all_dict_data = []
 
-    for key in dict_return.keys():
-        # if key in radar_future_* or key in radar_back_* we save the value somewhere
-        if (
-            key.startswith("radar_future")
-            or key.startswith("radar_back")
-            or key.startswith("groundstation_future")
-            or key.startswith("groundstation_back")
-            or key.startswith("ground_height_image")
-            or key.startswith("landcover_image")
-        ):
-            file_name = get_file_name(key, random_id, hour)
-            # Ensure directory exists before saving
-            os.makedirs(os.path.dirname(file_name), exist_ok=True)
+    # Process each dict_result
+    for dict_return in dict_results:
+        random_id = str(random.randint(0, 10000000000))  # generate a random id for the image
+        hour = dict_return["hour"].item()
 
-            np.savez_compressed(file_name, dict_return[key])
+        # Save the numpy arrays for this data point
+        for key in dict_return.keys():
+            # if key in radar_future_* or key in radar_back_* we save the value somewhere
+            if (
+                key.startswith("radar_future")
+                or key.startswith("radar_back")
+                or key.startswith("groundstation_future")
+                or key.startswith("groundstation_back")
+                or key.startswith("ground_height_image")
+                or key.startswith("landcover_image")
+            ):
+                file_name = get_file_name(key, random_id, hour)
+                # Ensure directory exists before saving
+                os.makedirs(os.path.dirname(file_name), exist_ok=True)
 
-    dict_data = {
-        "radar_file_path_future": get_file_name("radar_future", random_id, hour),
-        "radar_file_path_back": get_file_name("radar_back", random_id, hour),
-        "groundstation_file_path_future": get_file_name(
-            "groundstation_future", random_id, hour
-        ),
-        "groundstation_file_path_back": get_file_name(
-            "groundstation_back", random_id, hour
-        ),
-        "ground_height_file_path": get_file_name(
-            "ground_height_image", random_id, hour
-        ),
-        "landcover_file_path": get_file_name(
-            "landcover_image", random_id, hour
-        ),
-        "hour": dict_return["hour"].item(),
-        "minute": dict_return["minute"].item(),
-        "time_radar_back": dict_return["time_radar_back"].tolist(),
-        "datetime": data_datetime_str,
-        "id": random_id,
-    }
+                np.savez_compressed(file_name, dict_return[key])
 
-    # we want to append the dict_data to a json file
-    # Use the lock for thread-safe writing
+        # Prepare index data for this data point
+        dict_data = {
+            "radar_file_path_future": get_file_name("radar_future", random_id, hour),
+            "radar_file_path_back": get_file_name("radar_back", random_id, hour),
+            "groundstation_file_path_future": get_file_name(
+                "groundstation_future", random_id, hour
+            ),
+            "groundstation_file_path_back": get_file_name(
+                "groundstation_back", random_id, hour
+            ),
+            "ground_height_file_path": get_file_name(
+                "ground_height_image", random_id, hour
+            ),
+            "landcover_file_path": get_file_name(
+                "landcover_image", random_id, hour
+            ),
+            "hour": dict_return["hour"].item(),
+            "minute": dict_return["minute"].item(),
+            "time_radar_back": dict_return["time_radar_back"].tolist(),
+            "datetime": data_datetime_str,
+            "id": random_id,
+        }
+        all_dict_data.append(dict_data)
+
+    # Write all index data at once within the lock
     with lock:
         with open(os.path.join(save_hf_dataset, "index.json"), "a") as f:
-            json.dump(dict_data, f)
-            f.write("\n")
+            for dict_data in all_dict_data:
+                json.dump(dict_data, f)
+                f.write("\n")
 
 
 # New worker function
@@ -310,7 +317,8 @@ def process_index_multiple_passes(
     data_datetime = index_dataframe.index[int(i + nb_back_steps)]
     data_datetime_str = data_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
-    # Process multiple passes for this index
+    # Collect all passes first
+    dict_results = []
     for _ in range(nb_passes):
         dict_result = generate_data_point(
             index_dataframe,
@@ -323,8 +331,11 @@ def process_index_multiple_passes(
         )
 
         if dict_result is not None:
-            # Pass the lock and datetime string to save_image
-            save_image(dict_result, save_hf_dataset, data_datetime_str, lock)
+            dict_results.append(dict_result)
+
+    # Write all passes at once
+    if dict_results:
+        save_image(dict_results, save_hf_dataset, data_datetime_str, lock)
 
 
 # --- 0. Prerequisite: load main variable ---
