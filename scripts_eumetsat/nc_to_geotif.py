@@ -40,10 +40,12 @@ def create_srs_from_grid_mapping(grid_mapping_var):
     else:
         raise ValueError("Unsupported or missing grid mapping information.")
     return srs
-def nc_to_geotiff(nc_file, channel_names, output_file):
+
+def nc_to_geotiff(nc_file, channel_names, output_file, lon_min=-10.0, lon_max=12.0):
     """
     Converts specific channels from an MTG L1C NetCDF file to a georeferenced GeoTIFF
-    by reprojecting the data to a standard Lat/Lon grid (EPSG:4326).
+    by reprojecting the data to a standard Lat/Lon grid (EPSG:4326) and cropping
+    to the specified longitude range.
     """
     stacked_radiance_data = None
     native_srs = None
@@ -125,12 +127,18 @@ def nc_to_geotiff(nc_file, channel_names, output_file):
         band.SetNoDataValue(nodata_val)
         band.SetDescription(channel_names[i])
 
-    print(f"Warping image to {output_file}...")
+    print(f"Warping and cropping image to longitude range [{lon_min}, {lon_max}] -> {output_file}...")
+    
+    # Define output bounds for cropping: [min_x, min_y, max_x, max_y] in target CRS (EPSG:4326)
+    # For longitude cropping, we set a wide latitude range to include all available data
+    output_bounds = [lon_min, -90.0, lon_max, 90.0]
+    
     gdal.Warp(
         output_file,
         src_ds,
         format='GTiff',
         dstSRS='EPSG:4326',
+        outputBounds=output_bounds,
         resampleAlg=gdal.GRIORA_Bilinear,
         dstNodata=nodata_val,
         creationOptions=['COMPRESS=LZW', 'TILED=YES']
@@ -157,4 +165,4 @@ if __name__ == '__main__':
         channels_str = "_".join(args.channels)
         output_file = f"{file_name}_{channels_str}_final.tif"
 
-    nc_to_geotiff(args.file, args.channels, output_file)
+    nc_to_geotiff(args.file, args.channels, output_file, args.lon_min, args.lon_max)
