@@ -55,6 +55,7 @@ def nc_to_geotiff(nc_file, channel_names, output_file, lon_min=-10.0, lon_max=12
         print("Reading data from NetCDF...")
         # ... (The data reading part remains the same) ...
         main_data_group = dataset.groups.get('data')
+        
         if not main_data_group:
             raise ValueError("Main data group 'data' not found in the NetCDF file.")
 

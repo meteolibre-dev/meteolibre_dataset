@@ -13,8 +13,8 @@ from pyproj import Transformer
 
 # --- Global Constants ---
 EPSG = 32630
-TARGET_RESOLUTION = 500  # meters
-IMAGE_SIZE = 3472  # pixels
+TARGET_RESOLUTION = 1000  # meters
+IMAGE_SIZE = 3472//2  # pixels
 DST_CRS = f"EPSG:{EPSG}"
 CENTER_LON, CENTER_LAT = 3.2, 45.9 # Center point for the final image
 
@@ -88,38 +88,42 @@ def preprocess_eumetsat_file(input_path, output_dir="."):
             "driver": "GTiff"
         })
 
-    breakpoint()
-    
-    # replace -9999 with -10
-    dst_array[dst_array == -9999] = -10
+    MIN = -1.
+    MAX = 20.
 
+    # manage na value (-9999) and rescale between 0 and 254 then cast to int to reduce memory
+    for i in range(dst_array.shape[0]):
+        dst_array[i][dst_array[i] == -9999] = np.max(dst_array[i])
+        print(np.min(dst_array[i]), np.max(dst_array[i]))
+        dst_array[i] = (dst_array[i] - MIN) / (MAX - MIN) * 65536
+        dst_array[i] = dst_array[i].astype(np.uint16)
 
     # --- 3. Save Final Data (NumPy Array) ---
     np.savez_compressed(output_npz_path, dst_array)
     print(f"Saved final data to: {output_npz_path}")
 
     # --- 4. Plot Final Data (First Band) ---
-    plt.figure(figsize=(12, 10))
-    plt.imshow(dst_array[0], cmap="gray")
-    plt.colorbar(label="Channel Value")
-    plt.title(f"Final EUMETSAT Data (EPSG:{EPSG})")
-    plt.xlabel("Easting (m)"); plt.ylabel("Northing (m)")
-    plt.savefig(output_plot_path, dpi=300, bbox_inches='tight')
-    plt.close()
-    print(f"Saved final plot to: {output_plot_path}")
+    # plt.figure(figsize=(12, 10))
+    # plt.imshow(dst_array[1, :, :])
+    # plt.colorbar(label="Channel Value")
+    # plt.title(f"Final EUMETSAT Data (EPSG:{EPSG})")
+    # plt.xlabel("Easting (m)"); plt.ylabel("Northing (m)")
+    # plt.savefig(output_plot_path, dpi=300, bbox_inches='tight')
+    # plt.close()
+    # print(f"Saved final plot to: {output_plot_path}")
 
-    # --- 5. Save Reprojected GeoTIFF ---
-    with rasterio.open(output_geotiff_path, "w", **dst_meta) as dst:
-        dst.write(dst_array)
-    print(f"Reprojected GeoTIFF saved to: {output_geotiff_path}")
-    print(f"--- Finished processing for EUMETSAT file ---\n")
+    # # --- 5. Save Reprojected GeoTIFF ---
+    # with rasterio.open(output_geotiff_path, "w", **dst_meta) as dst:
+    #     dst.write(dst_array)
+    # print(f"Reprojected GeoTIFF saved to: {output_geotiff_path}")
+    # print(f"--- Finished processing for EUMETSAT file ---\n")
 
 
 def main():
     """
     Main function to process the EUMETSAT file.
     """
-    tiff_file = "/home/adrienbufort/meteolibre_dataset/scripts_eumetsat/results_geotif/20250110090000_channelssection1_merged.tif"
+    tiff_file = "/home/adrienbufort/meteolibre_dataset/scripts_eumetsat/results_geotif/20250110140000_channelssection1_merged.tif"
     output_directory = "preprocessed_eumetsat"
     
     try:
@@ -129,5 +133,5 @@ def main():
     
     print("All processing complete!")
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
