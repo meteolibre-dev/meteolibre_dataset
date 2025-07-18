@@ -81,10 +81,10 @@ def download_and_process_eumetsat_data(begin_date, end_date, bounding_box, gcp_b
             list_product_str.append(str(product))
             list_product.append(product)
 
-    # TODO CHANGE DATE HERE
-
     df = pd.DataFrame({"product": list_product_str, "product_class": list_product})
-    df["date"] = df["product"].str[len(prefix):(len(prefix) + 14)]
+    
+    # selecting the second date to get a proper value 
+    df["date"] = df["product"].str[(len(prefix) + 14 + 11):(len(prefix) + 14 + 11 + 14)]
     df["date"] = pd.to_datetime(df["date"], format="%Y%m%d%H%M%S")
 
     time_index = pd.date_range(begin_date, end_date, freq='30min')

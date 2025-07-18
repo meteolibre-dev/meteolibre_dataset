@@ -1,0 +1,9 @@
+netCDF4
+rasterio
+matplotlib
+numpy==1.26.4 
+gdal[numpy]==3.6.2
+pyproj
+eumdac
+pandas
+google-cloud-storage
