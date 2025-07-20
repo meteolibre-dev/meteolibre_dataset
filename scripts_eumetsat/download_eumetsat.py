@@ -18,6 +18,7 @@ from nc_to_geotif import nc_to_geotiff
 import rasterio
 from rasterio.merge import merge
 from google.cloud import storage
+from urllib3.exceptions import ProtocolError
 
 from preprocess_eumetsat import preprocess_eumetsat_file
 
@@ -190,5 +191,7 @@ def download_and_process_eumetsat_data(begin_date, end_date, bounding_box, gcp_b
 
         except eumdac.errors.ProductNotFoundError as e:
             print(f"Could not find product {product}: {e}")
+        except ProtocolError as e:
+            print(f"A network error occurred while downloading {product}, skipping. Error: {e}")
         except Exception as e:
             print(f"An error occurred while processing {product}: {e}")

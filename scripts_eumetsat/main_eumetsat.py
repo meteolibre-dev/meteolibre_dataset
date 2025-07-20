@@ -13,7 +13,7 @@ def main():
     """
     Main function to orchestrate the EUMETSAT data processing pipeline.
     """
-    start_date = datetime.datetime(2025, 1, 1)
+    start_date = datetime.datetime(2025, 1, 17, 4)
     end_date = datetime.datetime(2025, 7, 31)
     bounding_box = '-10, 39, 12, 52'
     gcp_bucket_name = 'eumetsat_preprocess' # Please replace with your bucket name
