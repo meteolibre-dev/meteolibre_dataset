@@ -189,7 +189,7 @@ def download_and_process_eumetsat_data(begin_date, end_date, bounding_box, gcp_b
                 os.remove(fsrc.name)
                 
 
-        except eumdac.errors.ProductNotFoundError as e:
+        except eumdac.datastore.ProductNotFoundError as e:
             print(f"Could not find product {product}: {e}")
         except ProtocolError as e:
             print(f"A network error occurred while downloading {product}, skipping. Error: {e}")
