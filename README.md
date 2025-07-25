@@ -10,6 +10,10 @@ Also ground station data are provided by data.gouv (https://www.data.gouv.fr/dat
 
 Topography data and land cover data are provided via https://portal.opentopography.org/ and https://www.earthenv.org/landcover.
 
+Also (but not disclose here for license reason), we preprocess satellite data in order to incorporate satellite data for third generation meteo sat coming from eumetsat organization 
+
+![datagouv](images/eumetsat.png)
+
 # meteolibre_dataset
 
 This repository is dedicated to the preprocessing of Météo-France (MF) data and ground station data to create a unified dataset suitable for training machine learning models.
