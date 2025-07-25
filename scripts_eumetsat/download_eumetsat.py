@@ -9,6 +9,7 @@ Put it simply this script will :
 """
 import datetime
 import os
+import time
 import eumdac
 import shutil
 import pandas as pd
@@ -21,6 +22,19 @@ from google.cloud import storage
 from urllib3.exceptions import ProtocolError
 
 from preprocess_eumetsat import preprocess_eumetsat_file
+
+
+def download_with_retry(product, max_retries=3, delay=10):
+    """Downloads a product with a retry mechanism for network and file corruption errors."""
+
+    with product.open() as fsrc, open(fsrc.name, mode='wb') as fdst:
+        fsrc_name = fsrc.name
+        shutil.copyfileobj(fsrc, fdst)
+    print(f"Product {product} downloaded to {fsrc_name}.")
+
+    return fsrc_name
+
+
 
 def upload_to_gcp(bucket_name, source_file_name, destination_blob_name):
     """Uploads a file to the bucket."""
@@ -105,20 +119,19 @@ def download_and_process_eumetsat_data(begin_date, end_date, bounding_box, gcp_b
     for index, row in unique_products_df.iterrows():
         product = row['product_class']
         try:
-            print(f"Downloading product: {product}")
-            with product.open() as fsrc, open(fsrc.name, mode='wb') as fdst:
-                shutil.copyfileobj(fsrc, fdst)
-            print(f"Product {product} downloaded to {fsrc.name}.")
+            fsrc_name = download_with_retry(product)
+            if not fsrc_name:
+                continue
 
             unzip_dir = 'tmp_unzip/'
-            if fsrc.name.endswith('.zip'):
+            if fsrc_name.endswith('.zip'):
                 if os.path.exists(unzip_dir):
                     shutil.rmtree(unzip_dir)
                 os.makedirs(unzip_dir)
 
-                with zipfile.ZipFile(fsrc.name, 'r') as zip_ref:
+                with zipfile.ZipFile(fsrc_name, 'r') as zip_ref:
                     zip_ref.extractall(unzip_dir)
-                print(f"Unzipped {fsrc.name} to {unzip_dir}")
+                print(f"Unzipped {fsrc_name} to {unzip_dir}")
 
                 nc_files_to_process = []
                 for suffix in ['34', '35', '36', '37', '38']:
@@ -175,8 +188,8 @@ def download_and_process_eumetsat_data(begin_date, end_date, bounding_box, gcp_b
                         print(f"Could not find {npz_file} to upload.")
 
                 shutil.rmtree(unzip_dir)
-                os.remove(fsrc.name)
-                print(f"Cleaned up {fsrc.name} and {unzip_dir}")
+                os.remove(fsrc_name)
+                print(f"Cleaned up {fsrc_name} and {unzip_dir}")
                 
                 # remove all the npz files in preprocessed_eumetsat/ and results_geotif/
                 for file in glob.glob("preprocessed_eumetsat/*.npz"):
@@ -185,13 +198,8 @@ def download_and_process_eumetsat_data(begin_date, end_date, bounding_box, gcp_b
                     os.remove(file)
 
             else:
-                print(f"Downloaded file {fsrc.name} is not a zip file, skipping preprocessing.")
-                os.remove(fsrc.name)
-                
+                print(f"Downloaded file {fsrc_name} is not a zip file, skipping preprocessing.")
+                os.remove(fsrc_name)
 
-        except eumdac.datastore.ProductNotFoundError as e:
-            print(f"Could not find product {product}: {e}")
-        except ProtocolError as e:
-            print(f"A network error occurred while downloading {product}, skipping. Error: {e}")
         except Exception as e:
             print(f"An error occurred while processing {product}: {e}")
